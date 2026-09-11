@@ -17,14 +17,14 @@ from models import InputNumberError, ProductNotFoundError
 def check_inventory(data):
     result = []
     for product in data:
-        result.append([product.product_code, product.product_name, product.product_stock])
+        result.append([product.product_code, product.product_name, product.product_price, product.product_stock])
     return result
 
 def check_urgent(data):
     result = []
     for product in data:
         if product.product_stock < 10:
-            result.append([product.product_code, product.product_name, product.product_stock])
+            result.append([product.product_code, product.product_name, product.product_price, product.product_stock])
     return result
 
 def total_price(data):

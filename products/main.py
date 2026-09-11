@@ -48,12 +48,12 @@ while True:
         case '1':
             li = check_inventory(data)
             for l in li:
-                print(f"상품 코드: {l[0]},\t품명: {l[1]},\t재고 수량: {l[2]}")
+                print(f"상품 코드: {l[0]},\t품명: {l[1]},\t단가: {l[2]},\t재고 수량: {l[3]}")
             continue
         case '2':
             li = check_urgent(data)
             for l in li:
-                print(f"상품 코드: {l[0]},\t품명: {l[1]},\t재고 수량: {l[2]}")
+                print(f"상품 코드: {l[0]},\t품명: {l[1]},\t단가: {l[2]},\t재고 수량: {l[3]}")
             continue
         case '3':
             print(f"재고 총 판매금액: {total_price(data)}")

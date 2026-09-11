@@ -53,7 +53,7 @@ class GeneralProduct(Product):
         super().__init__(product_code, product_name, product_price, product_stock)
         self.is_danger = is_danger
     def __str__(self):
-            return f"상품 코드: {self.product_code}, 품명: {self.product_name}, 단가: {self.product_price}, 재고수량: {self.product_stock}, 위험물 여부: {self.is_danger}"
+            return f"상품 코드: {self.product_code},\t품명: {self.product_name},\t단가: {self.product_price},\t재고수량: {self.product_stock},\t위험물 여부: {self.is_danger}"
 
 class FreshProduct(Product):
     def __init__(self, product_code, product_name, product_price, product_stock, expiration_date):
@@ -64,7 +64,7 @@ class FreshProduct(Product):
             return int(round(self.product_price * 0.5))
         return self.product_price
     def __str__(self):
-            return f"상품 코드: {self.product_code}, 품명: {self.product_name}, 단가: {self.product_price}, 재고수량: {self.product_stock}, 유통기한(날짜): {self.expiration_date}"
+            return f"상품 코드: {self.product_code},\t품명: {self.product_name},\t단가: {self.product_price},\t재고수량: {self.product_stock},\t유통기한(날짜): {self.expiration_date}"
 
 class InputNumberError(Exception):
     """ 입고 숫자 에러 """
