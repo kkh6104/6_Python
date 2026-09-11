@@ -228,3 +228,169 @@ cart1 + cart2 연산 시 두 장바구니의 상품이 합쳐진 새로운 Cart 
 
 print(cart) 호출 시 "장바구니 총 X개 상품 (총금액: Y원)" 형태로 출력되도록 __str__을 구현하세요.
 """
+class Item:
+    def __init__(self, name, price):
+        self.name = name
+        self.price = price
+
+class Cart:
+    def __init__(self, item_or_list):
+        self.items = []
+        if isinstance(item_or_list, list):
+            self.items = item_or_list
+        else:
+            self.items = [item_or_list]
+
+    def __len__(self):
+        return len(self.items)
+
+    def __str__(self):
+        return f"장바구니 총 {len(self.items)}개 상품 (총금액: {sum(item.price for item in self.items)}원)"
+    
+    def __add__(self, other):
+        return Cart(self.items + other.items)
+
+"""
+[문제 2] MRO (다중 상속 탐색 순서) 예측 문제
+아래 코드에서 c.say()를 실행했을 때 출력되는 문자열과 C.__mro__의 탐색 순서를 맞혀보세요.
+
+Python
+class Base:
+    def say(self):
+        print("Base!")
+
+class A(Base):
+    def say(self):
+        print("A!")
+
+class B(Base):
+    def say(self):
+        print("B!")
+
+class C(A, B):
+    pass
+
+c = C()
+c.say() # 과연 무엇이 출력될까요?
+"""
+
+# A! <-
+
+
+"""
+[문제 3] 덕 타이핑(Duck Typing) 기반 결제 시스템
+상속 관계가 전혀 없는 클래스들이 동일한 메소드를 가져서 다형성처럼 동작하는 파이썬의 덕 타이핑을 구현해 보세요.
+
+요구사항:
+
+CreditCard, KakaoPay, TossPay 클래스를 만드세요. (부모 클래스 상속 금지!)
+
+세 클래스 모두 pay(self, amount) 메소드를 작성하여 각자 방식대로 "{수단}으로 {amount}원 결제 완료"를 출력하게 하세요.
+
+process_payment(payment_method, amount) 함수를 만들고, 들어오는 결제 수단 객체의 pay()를 호출하게 하세요.
+
+직접 작성해서 코드를 보여주셔도 좋고, 막히는 부분이 있다면 힌트를 요청해 주세요!
+"""
+class CreditCard:
+    def __init__(self):
+        self.name = 'CreditCard'
+
+    def pay(self, amount):
+        print(f"{self.name}으로 {amount}원 결제 완료")
+
+class KakaoPay:
+    def __init__(self):
+        self.name = 'KakaoPay'
+
+    def pay(self, amount):
+        print(f"{self.name}으로 {amount}원 결제 완료")
+
+class TossPay:
+    def __init__(self):
+        self.name = 'TossPay'
+
+    def pay(self, amount):
+        print(f"{self.name}으로 {amount}원 결제 완료")
+
+def process_payment(payment_method, amount):
+    payment_method.pay(amount)
+
+for i in [CreditCard(), KakaoPay(), TossPay()]:
+    process_payment(i, 50000)
+
+
+"""
+📝 [내일의 실습] 쇼핑몰 부서별/상품별 매출 데이터 종합 분석
+온라인 쇼핑몰의 카테고리별 판매 데이터가 주어집니다.
+
+이 데이터를 분석하여 아래 요구사항에 맞는 결과를 반환하는 analyze_sales(sales_data) 함수를 작성하세요.
+
+🎯 요구사항
+최다 매출 상품 구하기:
+
+각 상품의 총 매출액은 수량(quantity) * 단가(price)입니다.
+
+전체 상품 중 총 매출액이 가장 높은 상품의 (상품명, 총매출액) 튜플을 구하세요. (max와 key=lambda 활용)
+
+쇼핑몰 전체 총 매출액 구하기:
+
+모든 카테고리, 모든 상품의 결제 금액을 합산한 전체 총 매출액을 구하세요. (sum 활용)
+
+카테고리별 매출 합계 구하기:
+
+카테고리명(Key)과 해당 카테고리의 총 매출액(Value)을 담은 새로운 딕셔너리를 만드세요.
+
+(힌트: 딕셔너리를 순회하면서 sum을 활용해 보세요!)
+
+반환값 형태:
+
+((최고매출상품명, 최고매출액), 전체총매출액, 카테고리별매출dict) 튜플 형태로 반환하고, 메인에서 언패킹하여 출력하세요.
+
+📥 입력 데이터
+Python
+sales_data = {
+    "전자제품": [
+        {"name": "4K 모니터", "quantity": 3, "price": 450000},
+        {"name": "기계식 키보드", "quantity": 8, "price": 120000},
+        {"name": "무선 마우스", "quantity": 15, "price": 35000}
+    ],
+    "생활가전": [
+        {"name": "로봇 청소기", "quantity": 2, "price": 800000},
+        {"name": "공기청정기", "quantity": 4, "price": 250000}
+    ],
+    "잡화": [
+        {"name": "에코백", "quantity": 20, "price": 15000},
+        {"name": "텀블러", "quantity": 10, "price": 22000}
+    ]
+}
+📤 출력 예시
+Plaintext
+========== 🛒 쇼핑몰 매출 분석 보고서 ==========
+- 최고 매출 상품: 로봇 청소기 (1,600,000원)
+- 전체 총 매출액: 5,655,000원
+
+[카테고리별 매출 현황]
+* 전자제품: 2,835,000원
+* 생활가전: 2,600,000원
+* 잡화: 520,000원
+"""
+sales_data = {
+    "전자제품": [
+        {"name": "4K 모니터", "quantity": 3, "price": 450000},
+        {"name": "기계식 키보드", "quantity": 8, "price": 120000},
+        {"name": "무선 마우스", "quantity": 15, "price": 35000}
+    ],
+    "생활가전": [
+        {"name": "로봇 청소기", "quantity": 2, "price": 800000},
+        {"name": "공기청정기", "quantity": 4, "price": 250000}
+    ],
+    "잡화": [
+        {"name": "에코백", "quantity": 20, "price": 15000},
+        {"name": "텀블러", "quantity": 10, "price": 22000}
+    ]
+}
+def analyze_sales(sales_data):
+    all_items = []
+    all_items = sales_data.values()
+    ms = max((item for item in all_items) , key = lambda x : x["quantity"] * x["price"])
+    print(ms)
