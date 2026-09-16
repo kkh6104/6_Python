@@ -5,6 +5,9 @@
     - 요청 주소: ?? --> https://kh-lab.rockua.ai.kr/stocks?sector=S08&market=&q=
     TODO: 오늘(09/15) 18시까지 이메일로 제출
 """
+"""
+print("=" * 60)
+print("정적 페이지 스크래핑")
 
 import requests, json, csv, importlib
 from bs4 import BeautifulSoup
@@ -23,13 +26,15 @@ stocks = parse_stocks(html)
 print(f"{'코드':<8}{'종목명':<16}{'섹터':<10}{'현재가':>12}{'등락률':>9}")
 for s in stocks:
     print(f"{s['code']:<8}{s['name']:<16}{s['sector']:<10}{s['price']:>12}{s['rate']:>9}")
-
-print("=" * 60)
-
+"""
 """
     실습용 사이트에서
         종목 메뉴 페이지(CSR)의 섹터를 "IT 서비스"로 검색한 결과 데이터를 추출
 """
+"""
+print("=" * 60)
+print("동적 페이지 스크래핑")
+
 
 # Playwright 동기 방식 API
 from playwright.sync_api import sync_playwright
@@ -76,3 +81,43 @@ with sync_playwright() as p:
 
 for s in items:
     print(f"{s['code']:<8}{s['name']:<16}{s['sector']:<10}{s['price']:>12}{s['rate']:>9}")
+"""
+"""
+무한 스크롤 연습
+페이지를 내리면 https://kh-lab.rockua.ai.kr/api/v1/companies?page=1&limit=15 같은 곳으로 요청을 보냄
+"""
+
+print("=" * 60)
+print("무한 스크롤 스크래핑")
+
+import requests
+
+from config import BASE, TIMEOUT, HEADERS
+from parsers import get_text, get_number, parse_stocks
+
+"""
+result = []
+for i in range(1, 10):
+    resp = requests.get(f"{BASE}/api/v1/companies?page={i}&limit=15", headers=HEADERS, timeout=TIMEOUT)
+    resp.raise_for_status()
+    result.extend(resp.json().get("items"))
+"""
+
+i = 1
+result =[]
+while True:
+    resp = requests.get(f"{BASE}/api/v1/companies?page={i}&limit=15", headers=HEADERS, timeout=TIMEOUT)
+    resp.raise_for_status()
+    item = resp.json().get("items")
+    if item is None:
+        break
+    if item == last_item:
+        break
+    last_item = item
+    i += 1
+    result.extend(resp.json().get("items"))
+
+
+print(f"{'코드':<8}{'종목명':<16}{'섹터':<10}{'현재가':>12}{'등락률':>9}")
+for s in result:
+    print(f"{s['code']:<8}{s['name']:<16}{s['sectorName']:<10}{s['price']:>12}{s['changeRate']:>9}")
