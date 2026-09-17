@@ -104,7 +104,8 @@ for i in range(1, 10):
 """
 
 i = 1
-result =[]
+result = []
+last_item = []
 while True:
     resp = requests.get(f"{BASE}/api/v1/companies?page={i}&limit=15", headers=HEADERS, timeout=TIMEOUT)
     resp.raise_for_status()
@@ -115,7 +116,7 @@ while True:
         break
     last_item = item
     i += 1
-    result.extend(resp.json().get("items"))
+    result.extend(item)
 
 
 print(f"{'코드':<8}{'종목명':<16}{'섹터':<10}{'현재가':>12}{'등락률':>9}")
