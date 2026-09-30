@@ -22,7 +22,7 @@ roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']
 raw_data['generation'] = raw_data['generation'].map(roman.index) + 1
 df = raw_data[['id','total_status','generation']]
 # print(df)
-
+"""
 # 정제된 데이터로 그래프 그리기
 plt.figure(figsize=(12, 5))
 sns.lineplot(
@@ -37,3 +37,4 @@ plt.ylabel("총스텟 합")
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.savefig(Path(__file__).with_name("po.png"), dpi=120)
+"""

@@ -45,7 +45,6 @@ with c2.cursor() as cur:
 """
 
 c3 = connect()
-
 with c3.cursor() as cur:
     cur.execute("INSERT INTO demo_commit VALUES (2, '테스트 2')")
 c3.commit()     # 명시적 커밋
@@ -98,6 +97,7 @@ plain.close()
 
 with conn.cursor() as cur:
     cur.execute("SELECT * FROM demo_param WHERE ROWNUM <= 1")
+    
     columns = [ col[0].lower() for col in cur.description]
     cur.rowfactory = lambda *args: dict(zip(columns, args))
 
