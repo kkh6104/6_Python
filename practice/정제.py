@@ -557,86 +557,29 @@ print(payment_summary)
 print()
 print("8 -----------------------------------")
 
-HOST = "127.0.0.1"
-PORT = 1521
-NAME = "XE"  
-USER = "C##JDBC"
-PASSWORD = "JDBC"
-
-def connect(autocommit=False):
-    # 서비스 이름(service_name) 방식으로 DSN 생성
-    dsn = oracledb.makedsn(HOST, PORT, service_name=NAME)
-    conn = oracledb.connect(
-        user=USER, password=PASSWORD, dsn=dsn
-    )
-    conn.autocommit = autocommit
-    return conn
-
-def get_engine():
-    # SQLAlchemy 연결 URL (service_name 방식)
-    url = f"oracle+oracledb://{USER}:{PASSWORD}@{HOST}:{PORT}/?service_name={NAME}"
-    return create_engine(url, pool_pre_ping=True)
-
-
-def run_step8_database_loading(final_cleaned_df):
+def run_step8_csv_export(final_cleaned_df):
     """
-    STEP 8: 오라클 DB 적재 및 검증 함수
+    STEP 8: DB 적재 대신 clean_rentals.csv 파일로 저장 및 집계 검증 함수
     """
-    
-    # 1. 스키마 설계 및 테이블 생성 (DDL)
-    create_table_sql = """
-    BEGIN
-        EXECUTE IMMEDIATE '
-            CREATE TABLE rental_log (
-                rental_id VARCHAR2(50) CONSTRAINT pk_rental_log PRIMARY KEY,
-                user_id VARCHAR2(50),
-                bike_id VARCHAR2(50),
-                station_id VARCHAR2(50),
-                rent_time TIMESTAMP,
-                return_time TIMESTAMP,
-                distance_km NUMBER(10, 2),
-                fee NUMBER(10, 0),
-                payment_method VARCHAR2(20),
-                duration_min NUMBER(10, 2),
-                bike_type VARCHAR2(50),
-                gear_count NUMBER(10, 0),
-                daily_fee NUMBER(10, 0),
-                manufacture_year NUMBER(4, 0),
-                station_name VARCHAR2(100),
-                district VARCHAR2(50)
-            )
-        ';
-    EXCEPTION
-        WHEN OTHERS THEN
-            IF SQLCODE = -955 THEN
-                NULL; -- 이미 테이블이 존재하는 경우 에러 무시
-            ELSE
-                RAISE;
-            END IF;
-    END;
-    """
-    
-    with connect(autocommit=True) as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(create_table_sql)
-    print("1. rental_log 테이블 생성 완료 (존재 시 스킵)")
-
-# 2. 적재 데이터 준비 (숫자 및 문자열 타입 정제 강화)
+    # 1. 적재 데이터 준비 (숫자 및 문자열 타입 정제 강화)
     df_to_load = final_cleaned_df.copy()
     
     # 1) 문자열 컬럼 처리
     str_cols = ['rental_id', 'user_id', 'bike_id', 'station_id', 'payment_method', 'bike_type', 'station_name', 'district']
     for col in str_cols:
-        df_to_load[col] = df_to_load[col].fillna("").astype(str)
-        
+        if col in df_to_load.columns:
+            df_to_load[col] = df_to_load[col].fillna("").astype(str)
+         
     # 2) 숫자형 컬럼 처리 (NaN은 None으로, 나머지는 올바른 숫자 타입으로 변환)
     int_cols = ['fee', 'gear_count', 'daily_fee', 'manufacture_year']
     for col in int_cols:
-        df_to_load[col] = pd.to_numeric(df_to_load[col], errors='coerce').astype('Int64')
-        
+        if col in df_to_load.columns:
+            df_to_load[col] = pd.to_numeric(df_to_load[col], errors='coerce').astype('Int64')
+         
     float_cols = ['distance_km', 'duration_min']
     for col in float_cols:
-        df_to_load[col] = pd.to_numeric(df_to_load[col], errors='coerce')
+        if col in df_to_load.columns:
+            df_to_load[col] = pd.to_numeric(df_to_load[col], errors='coerce')
 
     columns = [
         'rental_id', 'user_id', 'bike_id', 'station_id', 'rent_time', 'return_time',
@@ -644,111 +587,35 @@ def run_step8_database_loading(final_cleaned_df):
         'gear_count', 'daily_fee', 'manufacture_year', 'station_name', 'district'
     ]
     
-    # tolist() 변환 전 결측치를 확실하게 None(DB NULL)로 치환
-    df_to_load = df_to_load[columns].where(pd.notnull(df_to_load[columns]), None)
+    # 존재하는 컬럼만 선택하고 결측치 처리
+    valid_cols = [c for c in columns if c in df_to_load.columns]
+    df_to_load = df_to_load[valid_cols]
     
-    # 정수형 컬럼에 남아있을 수 있는 pandas Int64 타입을 파이썬 기본 int/None으로 변환
-    data_records = []
-    for row in df_to_load.values:
-        row_list = list(row)
-        # int 컬럼 인덱스들에 대해 None이 아니면 int로 변환
-        # index: fee(7), gear_count(11), daily_fee(12), manufacture_year(13)
-        for idx in [7, 11, 12, 13]:
-            if row_list[idx] is not None:
-                try:
-                    row_list[idx] = int(row_list[idx])
-                except (ValueError, TypeError):
-                    row_list[idx] = None
-        data_records.append(row_list)
+    # 2. CSV 파일로 저장
+    output_filename = "clean_rentals.csv"
+    df_to_load.to_csv(output_filename, index=False, encoding='utf-8-sig')
+    
+    print(f"\n[CSV 파일 저장 완료]")
+    print(f"- 파일명: {output_filename}")
+    print(f"- 최종 행 수: {len(df_to_load):,}")
 
-    # 3. 오라클용 UPSERT (MERGE INTO) 구현 및 재실행 검증 (2회 반복)
-    upsert_sql = """
-    MERGE INTO rental_log T
-    USING (
-        SELECT 
-            :1 AS rental_id, :2 AS user_id, :3 AS bike_id, :4 AS station_id, 
-            TO_TIMESTAMP(:5, 'YYYY-MM-DD HH24:MI:SS.FF') AS rent_time, 
-            TO_TIMESTAMP(:6, 'YYYY-MM-DD HH24:MI:SS.FF') AS return_time,
-            :7 AS distance_km, :8 AS fee, :9 AS payment_method, :10 AS duration_min, 
-            :11 AS bike_type, :12 AS gear_count, :13 AS daily_fee, :14 AS manufacture_year, 
-            :15 AS station_name, :16 AS district 
-        FROM dual
-    ) S
-    ON (T.rental_id = S.rental_id)
-    WHEN MATCHED THEN
-        UPDATE SET 
-            T.user_id = S.user_id,
-            T.bike_id = S.bike_id,
-            T.station_id = S.station_id,
-            T.rent_time = S.rent_time,
-            T.return_time = S.return_time,
-            T.distance_km = S.distance_km,
-            T.fee = S.fee,
-            T.payment_method = S.payment_method,
-            T.duration_min = S.duration_min,
-            T.bike_type = S.bike_type,
-            T.gear_count = S.gear_count,
-            T.daily_fee = S.daily_fee,
-            T.manufacture_year = S.manufacture_year,
-            T.station_name = S.station_name,
-            T.district = S.district
-    WHEN NOT MATCHED THEN
-        INSERT (
-            rental_id, user_id, bike_id, station_id, rent_time, return_time,
-            distance_km, fee, payment_method, duration_min, bike_type,
-            gear_count, daily_fee, manufacture_year, station_name, district
-        ) VALUES (
-            S.rental_id, S.user_id, S.bike_id, S.station_id, S.rent_time, S.return_time,
-            S.distance_km, S.fee, S.payment_method, S.duration_min, S.bike_type,
-            S.gear_count, S.daily_fee, S.manufacture_year, S.station_name, S.district
-        )
-    """
-
-    for run_idx in range(1, 3):
-        records_formatted = []
-        for row in data_records:
-            row_list = list(row)
-            if hasattr(row_list[4], 'strftime'):
-                row_list[4] = row_list[4].strftime('%Y-%m-%d %H:%M:%S.%f')
-            if hasattr(row_list[5], 'strftime'):
-                row_list[5] = row_list[5].strftime('%Y-%m-%d %H:%M:%S.%f')
-            records_formatted.append(row_list)
-
-        with connect(autocommit=False) as conn:
-            with conn.cursor() as cursor:
-                cursor.executemany(upsert_sql, records_formatted)
-                conn.commit()
-                
-        if run_idx == 1:
-            new_count = len(records_formatted)
-            updated_count = 0
+    # 3. 데이터 검증 (집계값 대조)
+    print("\n=== 적재 데이터 집계값 검증 ===")
+    summary = {
+        "총 행 수": len(df_to_load),
+        "자전거 수 (고유값)": df_to_load['bike_id'].nunique() if 'bike_id' in df_to_load else 0,
+        "이용자 수 (고유값)": df_to_load['user_id'].nunique() if 'user_id' in df_to_load else 0,
+        "총 매출": df_to_load['fee'].sum(skipna=True) if 'fee' in df_to_load else 0,
+        "총 이동 거리": df_to_load['distance_km'].sum(skipna=True) if 'distance_km' in df_to_load else 0,
+        "최소 날짜": df_to_load['rent_time'].min() if 'rent_time' in df_to_load else None,
+        "최대 날짜": df_to_load['rent_time'].max() if 'rent_time' in df_to_load else None,
+    }
+    
+    for k, v in summary.items():
+        if isinstance(v, (int, float)):
+            print(f"- {k}: {v:,.2f}" if isinstance(v, float) else f"- {k}: {v:,}")
         else:
-            new_count = 0
-            updated_count = 0
+            print(f"- {k}: {v}")
 
-        engine = get_engine()
-        with engine.connect() as conn_sql:
-            total_rows = pd.read_sql("SELECT COUNT(*) AS cnt FROM rental_log", conn_sql)['cnt'].iloc[0]
-
-        print(f"\n[{run_idx}회차 적재 결과]")
-        print(f"- 신규 건수: {new_count:,}")
-        print(f"- 갱신 건수: {updated_count:,}")
-        print(f"- 최종 행 수: {total_rows:,}")
-
-    # 4. 적재 검증 (집계값 대조)
-    print("\n=== 4. 적재 데이터 집계값 검증 ===")
-    with engine.connect() as conn_sql:
-        summary_df = pd.read_sql("""
-            SELECT 
-                COUNT(*) AS total_rows,
-                COUNT(DISTINCT bike_id) AS unique_bikes,
-                COUNT(DISTINCT user_id) AS unique_users,
-                SUM(fee) AS total_fee,
-                SUM(distance_km) AS total_distance,
-                MIN(rent_time) AS min_date,
-                MAX(rent_time) AS max_date
-            FROM rental_log
-        """, conn_sql)
-        print(summary_df.to_string(index=False))
-
-run_step8_database_loading(final_cleaned_df)
+# 함수 실행 예시
+run_step8_csv_export(final_cleaned_df)
