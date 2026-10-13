@@ -564,13 +564,13 @@ def run_step8_csv_export(final_cleaned_df):
     # 1. 적재 데이터 준비 (숫자 및 문자열 타입 정제 강화)
     df_to_load = final_cleaned_df.copy()
     
-    # 1) 문자열 컬럼 처리
+    # 문자열 컬럼 처리
     str_cols = ['rental_id', 'user_id', 'bike_id', 'station_id', 'payment_method', 'bike_type', 'station_name', 'district']
     for col in str_cols:
         if col in df_to_load.columns:
             df_to_load[col] = df_to_load[col].fillna("").astype(str)
          
-    # 2) 숫자형 컬럼 처리 (NaN은 None으로, 나머지는 올바른 숫자 타입으로 변환)
+    # 숫자형 컬럼 처리 (NaN은 None으로, 나머지는 올바른 숫자 타입으로 변환)
     int_cols = ['fee', 'gear_count', 'daily_fee', 'manufacture_year']
     for col in int_cols:
         if col in df_to_load.columns:
@@ -592,8 +592,10 @@ def run_step8_csv_export(final_cleaned_df):
     df_to_load = df_to_load[valid_cols]
     
     # 2. CSV 파일로 저장
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     output_filename = "clean_rentals.csv"
-    df_to_load.to_csv(output_filename, index=False, encoding='utf-8-sig')
+    output_path = os.path.join(current_dir, "data", output_filename)
+    df_to_load.to_csv(output_path, index=False, encoding='utf-8-sig')
     
     print(f"\n[CSV 파일 저장 완료]")
     print(f"- 파일명: {output_filename}")
@@ -617,5 +619,7 @@ def run_step8_csv_export(final_cleaned_df):
         else:
             print(f"- {k}: {v}")
 
-# 함수 실행 예시
+
+# 함수 실행 
+
 run_step8_csv_export(final_cleaned_df)
